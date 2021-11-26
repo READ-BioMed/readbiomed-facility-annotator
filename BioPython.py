@@ -1,45 +1,38 @@
+
+from stanfordcorenlp import StanfordCoreNLP
+
+##############################################
+#### VARIABLES TO CHANGE FOR NEW USERS #######
+##############################################
+stanfordNERnlp = StanfordCoreNLP(r'/Users/sonya/Downloads/stanford-corenlp-4.3.2', lang="en")
+R_HOME = "/usr/local/bin/R"
+
+
+##############################################
+################ IMPORTS  ####################
+##############################################
 import csv
 import math
-from xml.dom import minidom
-import os
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
-import Bio
 from Bio import Entrez
 Entrez.email = 'jiayuanw1@student.unimelb.edu.au'
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element
 from urllib.request import urlopen
-from stanfordcorenlp import StanfordCoreNLP
 from stanfordNER import extract_countries_StanfordNER, extract_organization_StanfordNER
 import spacy
 import time
 import pandas as pd
 import json
 import csv
-from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score
 import numpy as np
-
-stanfordNERnlp = StanfordCoreNLP(r'/Users/sonya/Downloads/stanford-corenlp-4.3.2', lang="en")
 Spacynlp = spacy.load("en_core_web_sm")
-
-import rpy2
-import os
-
-os.environ["R_HOME"] = "/Library/Frameworks/R.framework/Resources"
-
-import rpy2.robjects as robjects
 from rpy2.robjects.packages import importr
-
-
 rangeBuilder = importr("rangeBuilder")
-
-import MySQLdb
-
-import requests
-import eventlet
 import time
+
 # get_geocoder_for_service("nominatim")
 import re
 from geotext import GeoText
@@ -48,7 +41,9 @@ from nltk.tokenize import sent_tokenize
 
 import Levenshtein
 
-######## use GeoPy
+
+
+### GEOPY ###
 import geopy.geocoders
 from geopy.geocoders import Nominatim
 from geopy.geocoders import get_geocoder_for_service
@@ -59,13 +54,9 @@ def geocode(geocoder, config, query):
     cls = get_geocoder_for_service(geocoder)
     geolocator = cls(**config)
     location = geolocator.geocode(query, timeout=5, language="en")
-#     print(location.address)
     if len(str(location).split(",")) > 1:
         return ""
     return location
-    # geolocator = Nominatim(user_agent="project")
-    # location = geolocator.geocode("PARIS", language="en")
-    # print("#########", location)
 
 ########
 
@@ -106,9 +97,6 @@ def get_fullText_json(PMCID):
             para = re.sub(r"[A-Z\.]{2,3}|;]|[\.,]]", "", para)
             data = {int(i): para}
             data1.update(data)
-    # with open("full_text.json", "w") as fw:
-    #     json.dump(data1, fw)
-    #     print("finish json.")
 
 def parse_fullText():
     # https: // eutils.ncbi.nlm.nih.gov / entrez / eutils / efetch.fcgi?db = pmc & id = 4304705
@@ -129,9 +117,6 @@ def parse_fullText():
                 entity_country += extract_countries_StanfordNER(stanfordNERnlp, sentence)
                 entity_organisation += extract_organization_StanfordNER(sentence)
             dic[key] = [entity_country, entity_organisation]
-    # with open("entity_fullTextCountry_fullTextOrganisation.json", "w") as fw:
-    #     json.dump(dic, fw)
-    #     print("finish json.")
 
 def get_fullText_country():
     dataset = pd.read_csv("dataset_org.csv")
@@ -205,7 +190,6 @@ def get_fullText_organisation_disambiguation():
         if value != {}:
             for k, v in value.items():
                 try:
-                    # location = geolocator.geocode("National Institute of Health Stroke", timeout=5, language="en")
                     location = geolocator.geocode(k, language="en")
                     address = location.address
                     if address:
@@ -465,19 +449,6 @@ def get_affiliation_organisation():
     label_org = dataset.pop("Data-Location-org")
     PMCID = dataset.pop("PMCID")
 
-    # with open("affiliation_country_city_org1.json", "r") as fr:
-    #     data = json.load(fr)
-    #     affiliations = [value[2] for key, value in data.items()]
-    #     dic_org = {}
-    #     for i in range(len(PMID)):
-    #         print(i)
-    #         if len(affiliations[i]) != 0:
-    #             dic_org[str(PMID[i])] = affiliations[i]
-    #         else:
-    #             dic_org[str(PMID[i])] = {}
-    # with open("entity_count_affiliation_organisation.json", "w") as fw:
-    #     json.dump(dic_org, fw)
-    #     print("finish")
 
     with open("affiliation_country_city_org2.json", "r") as fr:
         data = json.load(fr)
@@ -863,7 +834,7 @@ def calIm_affiliation_country_pre_recall():
 
 
 ###########################################################
-################ Cal conbination weights ##################
+################ Cal combination weights ##################
 ###########################################################
 
 def cal_combination_weights_country():
@@ -1012,46 +983,41 @@ def get_highestNumber_entity(entities_li):
     return li
 
 """
-split the country, city and organisation of the affiliation, storing in "affiliation_country_city_org.json"
+Using the data in author_affiliation.csv, extracts the country, city and organisations found in the
+listed affiliations and writes them in affiliation_country_city_org2.json
 """
 def get_country_city_organization():
-    #### get json file, {PMID: [{country}, {city}, {organization}]}
-    file = open("author_affiliation.csv", "r")
+    file_name = "author_affiliation.csv"
+    file = open(file_name, "r")
     dataframe = pd.read_csv(file)
-    affiliation = dataframe.pop("Affiliation")
+    affiliations = dataframe.pop("Affiliation")
 
     i = 2
     num = 0
-    dict1 = {}
-    for af in affiliation:
-        print(i)
+    affilitation_country_city_org = {}
+    for affiliation in affiliations:
         countries = []
         cities = []
         organisations = []
-        if str(af) != "None":
-            dic_coun = {}
+        if str(affiliation) != "None":
+            dic_country = {}
             dic_city = {}
             dic_org = {}
-            for a in str(af).split("$"):
-                result = re.sub(r"[\w,-]+([\.|,][\w,-]+){0,3}@(([\w,-]+\.)|([\w,-]+)){1,3}", "", str(a))
+            for section in str(affiliation).split("$"):
+                result = re.sub(r"[\w,-]+([\.|,][\w,-]+){0,3}@(([\w,-]+\.)|([\w,-]+)){1,3}", "", str(section))
                 result = re.sub(r"\;[\s]", ",", result)
                 result = re.sub(r"\([\w,-,\.,\,,\s]+\)", "", result)
                 result = result.rstrip(".").rstrip(". ").split(",")
                 country = GeoText(result[-1]).countries
-                # print("before", result[-1])
-                # print("after", country)
                 if country == []:
                     country = re.sub(r"[0-9,\-,_]+", "", result[-1]).strip()
                     country = re.sub(r"\w{1,2}\s", "", country).strip()
                     country = re.sub(r"\.\s.+", "", country).strip()
-                    # country = str(geolocator.geocode(country, language="en"))
-                    # print("after2", country)
                 countries.append("".join(country))
                 if re.search("^[0-9,\s,A-Z]+$", result[-2]):
                     city = GeoText(result[-3]).cities
                     if city == []:
                         city = re.sub(r"[0-9,\-,_]+", "", result[-3]).strip()
-                    # organisations.extend(result[0:-3])
                     o1 = []
                     for o in result[0:-3]:
                         if re.search("[0-9]|\.", o) or len(o.strip().split()) == 1:
@@ -1068,62 +1034,45 @@ def get_country_city_organization():
                     city = GeoText(result[-2]).cities
                     if city == []:
                         city = re.sub(r"[0-9,\-,_]+", "", result[-2]).strip()
-                    # organisations.extend(result[0:-2])
                     o1 = []
                     for o in result[0:-2]:
                         if re.search("[0-9]|\.", o) or len(o.strip().split()) == 1:
-                            # print("1", o)
                             continue
                         else:
                             o1.append(o)
-                    # print("2", o1)
-
                     try:
                         organisations.append(o1[-1])
                     except:
                         organisations.append(result[0])
 
                 cities.append("".join(city))
-                # print(result)
-                # print("country", country)
-                # print("city", city)
-            for coun in countries:
-                if coun:
-                    dic_coun[coun.strip()] = dic_coun.get(coun.strip(), 0) + 1
+            for country in countries:
+                if country:
+                    dic_country[country.strip()] = dic_country.get(country.strip(), 0) + 1
                 else:
-                    dic_coun[coun.strip()] = "None"
-            # print("countries", countries)
-            # print("dic_coun", dic_coun)
-            for c in cities:
-                if c:
-                    dic_city[c.strip()] = dic_city.get(c.strip(), 0) + 1
+                    dic_country[country.strip()] = "None"
+            for city in cities:
+                if city:
+                    dic_city[city.strip()] = dic_city.get(city.strip(), 0) + 1
                 else:
-                    dic_city[c.strip()] = "None"
-            # print("cities", cities)
-            # print("dic_city", dic_city)
-
+                    dic_city[city.strip()] = "None"
             for org in organisations:
                 org = re.sub("^(\s|[0-9])+", "", org)
                 org = re.sub("^[\s,A-Z,0-9]+$", "", org)
                 if org:
                     dic_org[org.strip()] = dic_org.get(org.strip(), 0) + 1
                 else:
-                    # dic_org[org.strip()] = "None"
                     continue
 
-            # dic_org[organisations.strip()] = dic_org.get(organisations.strip(), 0) + 1
-
-            print("organisations", organisations)
-            print("dict2", dic_org)
-            dict1[str(PMID[num])] = [dic_coun, dic_city, dic_org]
+            affilitation_country_city_org[str(PMID[num])] = [dic_country, dic_city, dic_org]
         else:
-            dict1[str(PMID[num])] = [{}, {}, {}]
+            affilitation_country_city_org[str(PMID[num])] = [{}, {}, {}]
         i += 1
         num += 1
-    print(len(dict1))
+    print("\n")
 
     fw = open("affiliation_country_city_org2.json", "w")
-    json.dump(dict1, fw)
+    json.dump(affilitation_country_city_org, fw)
     fw.close()
 
 
@@ -1341,15 +1290,6 @@ def get_standard_improvement(a):
             b.append(i)
     return b
 
-# def get_standard(a):
-#     b = []
-#     for i in a:
-# #         print(type(i))
-#         i = i.replace("the ","")
-#         s = rangeBuilder.standardizeCountry(i)[0]
-#         b.append(s)
-#     return b
-
 def get_standard(a):
     b = []
     for i in a:
@@ -1407,6 +1347,11 @@ def get_test1(a):
     print(b)
     return b
 
+
+##############################################
+##############  main function  ###############
+##############################################
+
 if __name__ == "__main__":
     startime = time.time()
 
@@ -1416,19 +1361,10 @@ if __name__ == "__main__":
     label_org = dataset.pop("Data-Location-org")
     PMCID = dataset.pop("PMCID")
 
-    # get_country_city_organization()
-
-
-    ### show
-    # with open("entity_count_abstract_country.json", "r") as fr:
-    #     data = json.load(fr)
-    #     for key, value in data.items():
-    #         print(key)
-    #         print(value.keys())
-    ###
+    #get_country_city_organization()
 
     #### get text and entities
-    # get_title_abstract_affiliation_json(PMID)
+    get_title_abstract_affiliation_json(PMID)
     # parse_title_abstract_affiliation()
     # get_country_city_organization()
     # get_fullText_json(PMCID)
