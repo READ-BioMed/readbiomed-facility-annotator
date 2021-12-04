@@ -1,5 +1,6 @@
 from nltk import word_tokenize, pos_tag, ne_chunk, Tree, sent_tokenize
 import nltk
+nltk.download("popular")
 
 def extract_locations_nltk(plainText):
     tokenizedText = nltk.word_tokenize(plainText)

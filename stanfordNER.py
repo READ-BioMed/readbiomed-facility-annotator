@@ -1,9 +1,11 @@
 from stanfordcorenlp import StanfordCoreNLP
+
+### Variable to change
 stanfordNERnlp = StanfordCoreNLP(r'/Users/sonya/Downloads/stanford-corenlp-4.3.2', lang="en")
+###
 
 def extract_countries_StanfordNER(stanfordNERnlp, plaintext):
     IBO = stanfordNERnlp.ner(plaintext)
-    print("IBO",IBO)
     i = 0
     locations = []
     while i < len(IBO):
@@ -34,7 +36,6 @@ def extract_organization_StanfordNER(plaintext):
         if label == "ORGANIZATION":
             continuous = "".join(word)
             j = i + 1
-            # print(word, label)
             while j < len(IBO):
                 word1, label1 = IBO[j]
                 if label1 == label:

@@ -71,12 +71,11 @@ Extractions of country and organisation based on StandfordNER are stored in the
 """
 
 def get_fullText_json(PMCID):
+    print("Retrieving full text ...")
     # https: // eutils.ncbi.nlm.nih.gov / entrez / eutils / efetch.fcgi?db = pmc & id = 4304705
     data1 = {}
     num = 0
     for i in list(PMCID):
-        print(i)
-        print(num)
         num += 1
         if math.isnan(i):
             data = {num:[]}
@@ -97,17 +96,20 @@ def get_fullText_json(PMCID):
             para = re.sub(r"[A-Z\.]{2,3}|;]|[\.,]]", "", para)
             data = {int(i): para}
             data1.update(data)
+    with open("jsonFiles/fullText/full_text.json", "w") as fw:
+        json.dump(data1, fw)
+        print("Finished writing full text to jsonFiles/fullText/full_text.json.")
+
 
 def parse_fullText():
+    print("Retrieving countries and organisations from full text ...")
     # https: // eutils.ncbi.nlm.nih.gov / entrez / eutils / efetch.fcgi?db = pmc & id = 4304705
-    dic = {}
+    fullText_sentence_entity = {}
     #         s = {'sup', 'xref', 'italic', 'bold'}
-    with open("full_text.json", "r") as fr:
+    with open("jsonFiles/fullText/full_text.json", "r") as fr:
         paras = json.load(fr)
         num = 1
         for key, value in paras.items():
-            print(key)
-            print(num)
             num += 1
             entity_country = []
             entity_organisation = []
@@ -116,58 +118,48 @@ def parse_fullText():
                 sentence = sentence.replace("%", "percent")
                 entity_country += extract_countries_StanfordNER(stanfordNERnlp, sentence)
                 entity_organisation += extract_organization_StanfordNER(sentence)
-            dic[key] = [entity_country, entity_organisation]
+            fullText_sentence_entity[key] = [entity_country, entity_organisation]
+    with open("jsonFiles/fullText/country_organisation.json", "w") as fw:
+        json.dump(fullText_sentence_entity, fw)
+        print("Wrote full text countries and organisations into jsonFiles/FullText/country_organisation.json")
 
-def get_fullText_country():
+
+def get_fullText_entity(entityType):
+    print("Retrieving " + entityType + " count from full text ...")
     dataset = pd.read_csv("dataset_org.csv")
     PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-    with open("entity_fullTextCountry_fullTextOrganisation.json", "r") as fr:
-        dic_country = {}
+    with open("jsonFiles/fullText/country_organisation.json", "r") as fr:
+        dic_entity = {}
         data = json.load(fr)
-        countries = [v[0] for v in list(data.values())]
-        print(countries)
-        for i in range(len(PMID)):
-            print(i)
-            dic = {}
-            if len(countries[i]) != 0:
-                for c in countries[i]:
-                    dic[c] = dic.get(c, 0) + 1
-            dic_country[str(PMID[i])] = dic
-    # with open("entity_count_fullText_country.json", "w") as fw:
-    #     json.dump(dic_country, fw)
-    #     print("finish")
 
-def get_fullText_organisation():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-    with open("entity_fullTextCountry_fullTextOrganisation.json", "r") as fr:
-        dic_org = {}
-        data = json.load(fr)
-        organsations = [v[1] for v in list(data.values())]
+        if entityType == "country":
+            entity = [v[0] for v in list(data.values())]
+        else:
+            entity = [v[1] for v in list(data.values())]
+
         for i in range(len(PMID)):
-            print(i)
             dic = {}
-            if len(organsations[i]) != 0:
-                for c in organsations[i]:
+            if len(entity[i]) != 0:
+                for c in entity[i]:
                     dic[c] = dic.get(c, 0) + 1
-            dic_org[str(PMID[i])] = dic
-    with open("entity_count_fullText_organisation.json", "w") as fw:
-        json.dump(dic_org, fw)
-        print("finish")
+            dic_entity[str(PMID[i])] = dic
+    
+    if entityType == "country":
+        with open("jsonFiles/fullText/count_country.json", "w") as fw:
+            json.dump(dic_entity, fw)
+            print("Wrote country count to jsonFiles/fullText/count_country.json")
+    else:
+        with open("jsonFiles/fullText/count_org.json", "w") as fw:
+            json.dump(dic_entity, fw)
+            print("Wrote organisation count to jsonFiles/fullText/count_org.json")
+        
 
 def get_fullText_organisation_disambiguation():
-    with open("entity_count_fullText_organisation.json", "r") as fr:
+    print("Removing ambiguous organisations from full text ...")
+    with open("jsonFiles/fullText/count_org.json", "r") as fr:
         data = json.load(fr)
         dict1 = {}
         for key, value in data.items():
-            # print("1", key)
-            # print("2", value)
             dict2 = {}
             if value != {}:
                 for k, v in value.items():
@@ -181,7 +173,6 @@ def get_fullText_organisation_disambiguation():
                     else:
                         dict2[k] = v
             dict1[key] = dict2
-            # print("3", dict2)
 
     dict3 = {}
     for key, value in dict1.items():
@@ -200,74 +191,18 @@ def get_fullText_organisation_disambiguation():
                     dict4[k] = v
         dict3[key] = dict4
 
-    with open("entity_count_fullText_organisation2.json", "w") as fw:
+    with open("jsonFiles/fullText/count_org_unambiguous.json", "w") as fw:
         json.dump(dict3, fw)
-
-def cal_fullText_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_fullText_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k,v in value.items() if v==max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-
-    y_pred = np.array(country)
-    y_true = np.array(list(label_country))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-    print("precision1", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def cal_fullText_organisation_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_fullText_organisation2.json", "r")
-    data = json.load(fr)
-    organisation = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k,v in value.items() if v==max(value.values())]
-            organisation.append(c[0])
-        else:
-            organisation.append("")
-    print(organisation)
-
-    y_pred = np.array(organisation)
-    y_true = np.array(list(label_org))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-##############################################
-###################  Finish  #################
-##############################################
+        print("Wrote unambiguous organisations to jsonFiles/fullText/count_org_unambiguous.json")
 
 
 ###########################################################
 ## Get title, abstract and affiliation Text and entities ##
 ###########################################################
 """
- This step is to get the title, abstract and affiliation plaintext based on the PMID and store these message in a json file "dataset_json". There is a csv file "dataset.csv" storing PMID and Data-Location-country annotated by ourselves.
+ This step is to get the title, abstract and affiliation plaintext based on the PMID and store these message 
+ in a json file "dataset.json". There is a csv file "dataset.csv" storing PMID and Data-Location-country 
+ annotated by ourselves.
 """
 
 def get_data(data):
@@ -294,6 +229,7 @@ def get_data(data):
     return dic
 
 def get_title_abstract_affiliation_json(PMID):
+    print("Retrieving title, abstract and affiliations ...")
     data1 = {}
     for i in list(PMID):
         efetch = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?&db=pubmed&retmode=xml&id=%s" % (i)
@@ -301,20 +237,18 @@ def get_title_abstract_affiliation_json(PMID):
         data_xml = handle.read()
         data = get_data(data_xml)
         data1.update(data)
-    # print(len(data1))
-    # with open("dataset.json", "w") as f:
-    #     json.dump(data1, f)
-    #     print("finish json.")
+    with open("dataset.json", "w") as f:
+        json.dump(data1, f)
+        print("Wrote title, abstract and affiliations to dataset.json")
 
 def parse_title_abstract_affiliation():
-    with open("dataset_json", "r") as fr:
+    print("Extracting countries and organisations from titles and abstracts ... ")
+    with open("dataset.json", "r") as fr:
         data = json.load(fr)
         dic = {}
         j = 0
         for i in data.keys():
-            print(i)
             j += 1
-            print(j)
             abstract_entity_country = []
             abstract_entity_org = []
             title = re.sub("%", "percent", data[i][0])
@@ -328,665 +262,17 @@ def parse_title_abstract_affiliation():
                 abstract_entity_country += country
                 abstract_entity_org += org
             dic[i] = [[title_entity_country, title_entity_org], [abstract_entity_country, abstract_entity_org]]
-    # with open("entity_titleCountry_abstractCountry.json", "w") as fw:
-    #     json.dump(dic, fw)
-    #     print("finish")
+    with open("jsonFiles/title_abstract_entities.json", "w") as fw:
+        json.dump(dic, fw)
+        print("Wrote organisation and country entities to jsonFiles/title_abstract_entities.json")
 
-def get_title_country():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    with open("entity_titleCountry_abstractCountry.json", "r") as fr:
-        data = json.load(fr)
-        countries = [value[0][0] for key, value in data.items()]
-        dic_country = {}
-        for i in range(len(PMID)):
-            print(i)
-            dic = {}
-            if len(countries[i]) != 0:
-                for c in countries[i]:
-                    dic[c] = dic.get(c, 0) + 1
-            dic_country[str(PMID[i])] = dic
-    # with open("entity_count_title_country.json", "w") as fw:
-    #     json.dump(dic_country, fw)
-    #     print("finish")
-
-def get_title_organisation():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    with open("entity_titleCountry_abstractCountry.json", "r") as fr:
-        data = json.load(fr)
-        orgainsations = [value[0][1] for key, value in data.items()]
-        print(orgainsations)
-        dic_org = {}
-        for i in range(len(PMID)):
-            print(i)
-            dic = {}
-            if len(orgainsations[i]) != 0:
-                for c in orgainsations[i]:
-                    dic[c] = dic.get(c, 0) + 1
-            dic_org[str(PMID[i])] = dic
-    with open("entity_count_title_organisation.json", "w") as fw:
-        json.dump(dic_org, fw)
-        print("finish")
-
-def get_abstract_country():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    with open("entity_titleCountry_abstractCountry.json", "r") as fr:
-        data = json.load(fr)
-        countries = [value[1][0] for key, value in data.items()]
-        dic_country = {}
-        for i in range(len(PMID)):
-            print(i)
-            dic = {}
-            if len(countries[i]) != 0:
-                for c in countries[i]:
-                    dic[c] = dic.get(c, 0) + 1
-            dic_country[str(PMID[i])] = dic
-    with open("entity_count_abstract_country.json", "w") as fw:
-        json.dump(dic_country, fw)
-        print("finish")
-
-def get_abstract_organisation():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    with open("entity_titleCountry_abstractCountry.json", "r") as fr:
-        data = json.load(fr)
-        orgainsations = [value[1][1] for key, value in data.items()]
-        dic_org = {}
-        for i in range(len(PMID)):
-            print(i)
-            dic = {}
-            if len(orgainsations[i]) != 0:
-                for c in orgainsations[i]:
-                    dic[c] = dic.get(c, 0) + 1
-            dic_org[str(PMID[i])] = dic
-    with open("entity_count_abstract_organisation.json", "w") as fw:
-        json.dump(dic_org, fw)
-        print("finish")
-
-def get_affiliation_country():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    with open("affiliation_country_city_org1.json", "r") as fr:
-        data = json.load(fr)
-        countries = [value[0] for key, value in data.items()]
-        dic_country = {}
-        for i in range(len(PMID)):
-            print(i)
-            if len(countries) != 0:
-                dic_country[str(PMID[i])] = countries[i]
-            else:
-                dic_country[str(PMID[i])] = {}
-    with open("entity_count_affiliation_country.json", "w") as fw:
-        json.dump(dic_country, fw)
-        print("finish")
-
-def get_affiliation_organisation():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-
-    with open("affiliation_country_city_org2.json", "r") as fr:
-        data = json.load(fr)
-        affiliations = [value[2] for key, value in data.items()]
-        dic_org = {}
-        for i in range(len(PMID)):
-            print(i)
-            if len(affiliations[i]) != 0:
-                dic_org[str(PMID[i])] = affiliations[i]
-            else:
-                dic_org[str(PMID[i])] = {}
-    with open("entity_count_affiliation_organisation2.json", "w") as fw:
-        json.dump(dic_org, fw)
-        print("finish")
-
-##############################################
-###################  Finish  #################
-##############################################
-
-###########################################################
-###### Cal title, abstract and affiliation baseline #######
-###########################################################
-
-def cal_title_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_title_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k, v in value.items() if v==max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-
-    print(country)
-    print(list(label_country))
-    # test = [i for i in country if i !='']
-    # print(len(test))
-
-    y_pred = np.array(country)
-    y_true = np.array(list(label_country))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def cal_title_organisation_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_title_organisation.json", "r")
-    data = json.load(fr)
-    organisation = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k,v in value.items() if v==max(value.values())]
-            organisation.append(c[0])
-        else:
-            organisation.append("")
-    # print(organisation)
-
-    y_pred = np.array(organisation)
-    y_true = np.array(list(label_org))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def cal_abstract_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_abstract_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k, v in value.items() if v==max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-
-    print(country)
-    print(list(label_country))
-    # test = [i for i in country if i !='']
-    # print(len(test))
-
-    y_pred = np.array(country)
-    y_true = np.array(list(label_country))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def cal_abstract_organisation_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_abstract_organisation.json", "r")
-    data = json.load(fr)
-    organisation = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k,v in value.items() if v==max(value.values())]
-            organisation.append(c[0])
-        else:
-            organisation.append("")
-    print(organisation)
-
-    y_pred = np.array(organisation)
-    y_true = np.array(list(label_org))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def cal_affiliation_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_affiliation_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k, v in value.items() if v==max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-
-    print(country)
-    print(list(label_country))
-    # test = [i for i in country if i !='']
-    # print(len(test))
-
-    y_pred = np.array(country)
-    y_true = np.array(list(label_country))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def cal_affiliation_organisation_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_affiliation_organisation2.json", "r")
-    data = json.load(fr)
-    organisation = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k,v in value.items() if v==max(value.values())]
-            organisation.append(c[0])
-        else:
-            organisation.append("")
-    print(organisation)
-
-    y_pred = np.array(organisation)
-    y_true = np.array(list(label_org))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-#####
-
-##############################################
-###################  Finish  #################
-##############################################
-
-###########################################################
-##### Cal title, abstract and affiliation improvement #####
-###########################################################
-"""
-input: list
-output: list
-get_standard_countries(["U.S.","America","Republic of China","Korea","South Korea"])
-['UNITED STATES', 'America', 'Republic of China', 'Korea', 'SOUTH KOREA']
-"""
-def get_standard_countries(a):
-    b = []
-    for i in a:
-        i = i.replace("the ", "")
-        # i = "China" if i == "Republic of China" else i
-        # i = "South Korea" if i == "Korea" else i
-        s = rangeBuilder.standardizeCountry(i)[0]
-        if s != "":
-            b.append(s)
-        else:
-            if i == "America":
-                b.append("UNITED STATES")
-            elif i == "Republic of China":
-                b.append("CHINA")
-            elif i == "Korea":
-                b.append("SOUTH KOREA")
-            else:
-                b.append(i)
-    return b
-
-"""
-input: list
-output: list
-"""
-
-def get_geocode(a):
-#     print("a",a)
-    b = []
-    for i in a:
-#         print("i",i)
-        geo = []
-        for ii in i.split(","):
-#             print("ii",ii)
-            geo.append(str(geocode("nominatim", config, ii)))
-        geo = ",".join(geo)
-        b.append(geo)
-    return b
-
-def calIm_fulltext_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_fullText_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k, v in value.items() if v == max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-    country_std = get_standard_countries(country)
-    label_std = get_standard_countries(label_country)
-    y_pred = np.array(country_std)
-    y_true = np.array(list(label_std))
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-    print("precision1", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def calIm_title_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_title_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k, v in value.items() if v == max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-
-    country_std = get_standard_countries(country)
-    label_std = get_standard_countries(label_country)
-
-    y_pred = np.array(country_std)
-    y_true = np.array(list(label_std))
-
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def calIm_abstract_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_abstract_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k, v in value.items() if v == max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-
-    country_std = get_standard_countries(country)
-    label_std = get_standard_countries(label_country)
-    y_pred = np.array(country_std)
-    y_true = np.array(list(label_std))
-
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-    print("precision", precision)
-    print("recall", recall)
-    print("f1_score", f1)
-    fr.close()
-
-def calIm_affiliation_country_pre_recall():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr = open("entity_count_affiliation_country.json", "r")
-    data = json.load(fr)
-    country = []
-    for value in data.values():
-        if value != {}:
-            c = [k for k, v in value.items() if v == max(value.values())]
-            country.append(c[0])
-        else:
-            country.append("")
-
-    country_std = get_standard_countries(country)
-    label_std = get_standard_countries(label_country)
-    y_pred = np.array(country_std)
-    y_true = np.array(list(label_std))
-
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-    f1 = f1_score(y_true, y_pred, average="weighted")
-    print("precision", precision)
-    print("recall", recall)
-    print("f1-score", f1)
-    fr.close()
-
-##############################################
-###################  Finish  #################
-##############################################
-
-
-###########################################################
-################ Cal combination weights ##################
-###########################################################
-
-def cal_combination_weights_country():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr_fullText = open("entity_count_fullText_country.json", "r")
-    fr_title = open("entity_count_title_country.json", "r")
-    fr_abstract = open("entity_count_abstract_country.json", "r")
-    fr_affiliation = open("entity_count_affiliation_country.json", "r")
-
-    dataset1 = json.load(fr_fullText)
-    dataset2 = json.load(fr_title)
-    dataset3 = json.load(fr_abstract)
-    dataset4 = json.load(fr_affiliation)
-
-    fullText = list(dataset1.values())
-    title = list(dataset2.values())
-    abstract = list(dataset3.values())
-    affiliation = list(dataset4.values())
-
-    
-    file1 = open("country_weights4.csv", "w")
-    writer1 = csv.writer(file1)
-    writer1.writerow(
-        ["affiliation weight", "title weight", "abstract weight", "full text weight", "precision", "recall"])
-    for afw in range(1, 10):
-        for tw in range(1, 10):
-            for aw in range(1, 10):
-                if tw + aw + afw == 10:
-                    country = cal_combination_weights(PMID, title, abstract, affiliation, tw, aw, afw)
-                    country_std = get_standard_countries(country)
-                    label_std = get_standard_countries(label_country)
-                    y_pred = np.array(country_std)
-                    y_true = np.array(list(label_std))
-
-                    precision = precision_score(y_true, y_pred, average="weighted")
-                    recall = recall_score(y_true, y_pred, average="weighted")
-                    F1_score = f1_score(y_true, y_pred, average="weighted")
-                    print(precision)
-                    print(recall)
-                    writer1.writerow([afw / 10.0, tw / 10.0, aw / 10.0, format(precision, ".3f"),
-                                      format(recall, ".3f"), format(F1_score, ".3f")])
-
-
-def cal_combination_weights(PMID, title, abstract, affiliation, t_weight, a_weight, af_weight):
-    result = []
-    for i in range(len(PMID)):
-        dic = {}
-        if not title and not abstract and not affiliation:
-            result.append("")
-            continue
-        if title:
-            # print("title", title)
-            for key, value in title[i].items():
-                dic[key] = int(dic.get(key, 0)) + int(value) * t_weight
-        if abstract:
-            for key1, value1 in abstract[i].items():
-                dic[key1] = int(dic.get(key1, 0)) + int(value1) * a_weight
-        if affiliation:
-            for key2, value2 in affiliation[i].items():
-                if key2:
-                    dic[key2] = int(dic.get(key2, 0)) + int(value2) * af_weight
-        # r = ",".join([key4 for key4, value4 in dic.items() if value4 == max(dic.values()) and value4 != 0])
-        r = [key4 for key4, value4 in dic.items() if value4 == max(dic.values()) and value4 != 0]
-        if r:
-            result.append(r[0])
-        else:
-            result.append("")
-    return result
-
-def cal_combination_weights_organisation():
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-    label_org = dataset.pop("Data-Location-org")
-    PMCID = dataset.pop("PMCID")
-
-    fr_fullText = open("entity_count_fullText_organisation.json", "r")
-    fr_title = open("entity_count_title_organisation.json", "r")
-    fr_abstract = open("entity_count_abstract_organisation.json", "r")
-    fr_affiliation = open("entity_count_affiliation_organisation.json", "r")
-
-    dataset1 = json.load(fr_fullText)
-    dataset2 = json.load(fr_title)
-    dataset3 = json.load(fr_abstract)
-    dataset4 = json.load(fr_affiliation)
-
-    fullText = list(dataset1.values())
-    title = list(dataset2.values())
-    abstract = list(dataset3.values())
-    affiliation = list(dataset4.values())
-
-    weights_combination = [[0.5, 0.5, 0, 0], [0.5, 0, 0.5, 0], [0.5, 0, 0, 0.5], [0, 0.5, 0.5, 0],
-                           [0, 0.5, 0, 0.5], [0, 0, 0.5, 0.5]]
-
-    
-    file1 = open("organisation_weights2.csv", "w")
-    writer1 = csv.writer(file1)
-    writer1.writerow(
-        ["title weight", "abstract weight", "affiliation weight", "precision", "recall", "F1-score"])
-    for tw in range(1, 10):
-        for aw in range(1, 10):
-            for afw in range(1, 10):
-                if tw + aw + afw == 10:
-                    organisation = cal_combination_weights(PMID, title, abstract, affiliation, tw, aw,
-                                                           afw)
-
-                    organisation_std = get_standard_countries(organisation)
-                    label_std = get_standard_countries(label_org)
-                    y_pred = np.array(organisation_std)
-                    y_true = np.array(list(label_std))
-
-                    precision = precision_score(y_true, y_pred, average="weighted")
-                    recall = recall_score(y_true, y_pred, average="weighted")
-                    F1_score = f1_score(y_true, y_pred, average="weighted")
-                    print(precision)
-                    print(recall)
-                    writer1.writerow([tw / 10.0, aw / 10.0, afw / 10.0, format(precision, ".3f"),
-                                      format(recall, ".3f"), format(F1_score, ".3f")])
-
-
-
-##############################################
-###################  Finish  #################
-##############################################
-
-"""
-get the standard location entities of 
-"""
-def get_highestNumber_entity(entities_li):
-    li = []
-    for entities in entities_li:
-        if len(entities) > 1:
-            dic = {}
-            for entity in entities:
-                dic[entity] = dic.get(entity, 0) + 1
-            li.append(",".join([key+","+str(value) for key, value in dic.items() if value == max(dic.values())]))
-        elif len(entities) == 1:
-            li.append(entities[0]+","+str(1))
-        else:
-            li.append("")
-    return li
 
 """
 Using the data in author_affiliation.csv, extracts the country, city and organisations found in the
-listed affiliations and writes them in affiliation_country_city_org2.json
+listed affiliations and writes them in affiliation/country_org.json
 """
-def get_country_city_organization():
+def get_affiliation_country_city_organization():
+    print("Retrieving countries, cities and organisations from affiliations ...")
     file_name = "author_affiliation.csv"
     file = open(file_name, "r")
     dataframe = pd.read_csv(file)
@@ -1071,9 +357,246 @@ def get_country_city_organization():
         num += 1
     print("\n")
 
-    fw = open("affiliation_country_city_org2.json", "w")
+    fw = open("jsonFiles/affiliation/country_org.json", "w")
     json.dump(affilitation_country_city_org, fw)
+    print("Wrote countries, cities and organisations of affiliations to jsonFiles/affiliation/country_org.json")
     fw.close()
+
+def get_entity(entityType, section, fileToRead, fileToWrite):
+    print("Retrieving " + entityType + " count in " + section + "...")
+    dataset = pd.read_csv("dataset_org.csv")
+    PMID = dataset.pop("PMID")
+
+    with open(fileToRead, "r") as fr:
+        data = json.load(fr)
+
+        if entityType == "country" and section == "title":
+            entities = [value[0][0] for key, value in data.items()]
+        if entityType == "organisation" and section == "title":
+            entities = [value[0][1] for key, value in data.items()]
+        if entityType == "country" and section == "abstract":
+            entities = [value[1][0] for key, value in data.items()]
+        if entityType == "organisation" and section == "abstract":
+            entities = [value[1][1] for key, value in data.items()]
+        if entityType == "country" and section == "affiliation":
+            entities = [value[0] for key, value in data.items()]
+        if entityType == "organisation" and section == "affiliation":
+            entities = [value[2] for key, value in data.items()]
+            
+        dic_entity = {}
+        if section == "affiliation":
+            for i in range(len(PMID)):
+                if len(entities) != 0:
+                    dic_entity[str(PMID[i])] = entities[i]
+                else:
+                    dic_entity[str(PMID[i])] = {}
+        else:
+            for i in range(len(PMID)):
+                dic = {}
+                if len(entities[i]) != 0:
+                    for entity in entities[i]:
+                        dic[entity] = dic.get(entity, 0) + 1
+                dic_entity[str(PMID[i])] = dic
+
+    with open(fileToWrite, "w") as fw:
+        json.dump(dic_entity, fw)
+        print("Wrote " + entityType + " count of " + section + " to jsonFiles/title/count_country.json")
+
+###########################################################
+########## Calculate f1, precision and recall  ############
+###########################################################
+"""
+input: list
+output: list
+get_standard_countries(["U.S.","America","Republic of China","Korea","South Korea"])
+['UNITED STATES', 'America', 'Republic of China', 'Korea', 'SOUTH KOREA']
+"""
+def get_standard_countries(a):
+    b = []
+    for i in a:
+        i = i.replace("the ", "")
+        s = rangeBuilder.standardizeCountry(i)[0]
+        if s != "":
+            b.append(s)
+        else:
+            if i == "America":
+                b.append("UNITED STATES")
+            elif i == "Republic of China":
+                b.append("CHINA")
+            elif i == "Korea":
+                b.append("SOUTH KOREA")
+            else:
+                b.append(i)
+    return b
+
+"""
+input: list
+output: list
+"""
+
+def get_geocode(a):
+    b = []
+    for i in a:
+        geo = []
+        for ii in i.split(","):
+            geo.append(str(geocode("nominatim", config, ii)))
+        geo = ",".join(geo)
+        b.append(geo)
+    return b
+
+def cal_f1_pre_recall(entityType, section, jsonFile, improvement):
+    if improvement:
+        print("Calculating imrpovement score for " + entityType + " in the " + section + "...")
+    else:
+        print("Calculating precision, recall and f1 score for " + entityType + " in the " + section + "...")
+
+    dataset = pd.read_csv("dataset_org.csv")
+    if entityType == "country":
+        label = dataset.pop("Data-Location-country")
+    else:
+        label = dataset.pop("Data-Location-org")
+
+    fr = open(jsonFile, "r")
+    data = json.load(fr)
+    entity = []
+    for value in data.values():
+        if value != {}:
+            c = [k for k,v in value.items() if v==max(value.values())]
+            entity.append(c[0])
+        else:
+            entity.append("")
+
+    if improvement:
+        country_std = get_standard_countries(entity)
+        label_std = get_standard_countries(label)
+        y_pred = np.array(country_std)
+        y_true = np.array(list(label_std))
+    else:
+        y_pred = np.array(entity)
+        y_true = np.array(list(label))
+
+    precision = precision_score(y_true, y_pred, average="weighted")
+    recall = recall_score(y_true, y_pred, average="weighted")
+    f1 = f1_score(y_true, y_pred, average="weighted")
+    print("precision score:", precision)
+    print("recall score:", recall)
+    print("f1 score:", f1)
+    fr.close()
+
+###########################################################
+################ Cal combination weights ##################
+###########################################################
+
+def cal_combination_weights_country():
+    dataset = pd.read_csv("dataset_org.csv")
+    PMID = dataset.pop("PMID")
+    label_country = dataset.pop("Data-Location-country")
+
+    fr_fullText = open("jsonFiles/fullText/count_country.json", "r")
+    fr_title = open("entity_count_title_country.json", "r")
+    fr_abstract = open("entity_count_abstract_country.json", "r")
+    fr_affiliation = open("entity_count_affiliation_country.json", "r")
+
+    dataset1 = json.load(fr_fullText)
+    dataset2 = json.load(fr_title)
+    dataset3 = json.load(fr_abstract)
+    dataset4 = json.load(fr_affiliation)
+
+    title = list(dataset2.values())
+    abstract = list(dataset3.values())
+    affiliation = list(dataset4.values())
+
+    file1 = open("country_weights4.csv", "w")
+    writer1 = csv.writer(file1)
+    writer1.writerow(
+        ["affiliation weight", "title weight", "abstract weight", "full text weight", "precision", "recall"])
+    for afw in range(1, 10):
+        for tw in range(1, 10):
+            for aw in range(1, 10):
+                if tw + aw + afw == 10:
+                    country = cal_combination_weights(PMID, title, abstract, affiliation, tw, aw, afw)
+                    country_std = get_standard_countries(country)
+                    label_std = get_standard_countries(label_country)
+                    y_pred = np.array(country_std)
+                    y_true = np.array(list(label_std))
+
+                    precision = precision_score(y_true, y_pred, average="weighted")
+                    recall = recall_score(y_true, y_pred, average="weighted")
+                    F1_score = f1_score(y_true, y_pred, average="weighted")
+                    print(precision)
+                    print(recall)
+                    writer1.writerow([afw / 10.0, tw / 10.0, aw / 10.0, format(precision, ".3f"),
+                                      format(recall, ".3f"), format(F1_score, ".3f")])
+
+
+def cal_combination_weights(PMID, title, abstract, affiliation, t_weight, a_weight, af_weight):
+    result = []
+    for i in range(len(PMID)):
+        dic = {}
+        if not title and not abstract and not affiliation:
+            result.append("")
+            continue
+        if title:
+            # print("title", title)
+            for key, value in title[i].items():
+                dic[key] = int(dic.get(key, 0)) + int(value) * t_weight
+        if abstract:
+            for key1, value1 in abstract[i].items():
+                dic[key1] = int(dic.get(key1, 0)) + int(value1) * a_weight
+        if affiliation:
+            for key2, value2 in affiliation[i].items():
+                if key2:
+                    dic[key2] = int(dic.get(key2, 0)) + int(value2) * af_weight
+        # r = ",".join([key4 for key4, value4 in dic.items() if value4 == max(dic.values()) and value4 != 0])
+        r = [key4 for key4, value4 in dic.items() if value4 == max(dic.values()) and value4 != 0]
+        if r:
+            result.append(r[0])
+        else:
+            result.append("")
+    return result
+
+def cal_combination_weights_organisation():
+    dataset = pd.read_csv("dataset_org.csv")
+    PMID = dataset.pop("PMID")
+    label_org = dataset.pop("Data-Location-org")
+
+    fr_fullText = open("jsonFiles/fullText/count_org.json", "r")
+    fr_title = open("entity_count_title_organisation.json", "r")
+    fr_abstract = open("entity_count_abstract_organisation.json", "r")
+    fr_affiliation = open("entity_count_affiliation_organisation.json", "r")
+
+    dataset1 = json.load(fr_fullText)
+    dataset2 = json.load(fr_title)
+    dataset3 = json.load(fr_abstract)
+    dataset4 = json.load(fr_affiliation)
+
+    title = list(dataset2.values())
+    abstract = list(dataset3.values())
+    affiliation = list(dataset4.values())
+    
+    file1 = open("organisation_weights2.csv", "w")
+    writer1 = csv.writer(file1)
+    writer1.writerow(
+        ["title weight", "abstract weight", "affiliation weight", "precision", "recall", "F1-score"])
+    for tw in range(1, 10):
+        for aw in range(1, 10):
+            for afw in range(1, 10):
+                if tw + aw + afw == 10:
+                    organisation = cal_combination_weights(PMID, title, abstract, affiliation, tw, aw,
+                                                           afw)
+
+                    organisation_std = get_standard_countries(organisation)
+                    label_std = get_standard_countries(label_org)
+                    y_pred = np.array(organisation_std)
+                    y_true = np.array(list(label_std))
+
+                    precision = precision_score(y_true, y_pred, average="weighted")
+                    recall = recall_score(y_true, y_pred, average="weighted")
+                    F1_score = f1_score(y_true, y_pred, average="weighted")
+                    print(precision)
+                    print(recall)
+                    writer1.writerow([tw / 10.0, aw / 10.0, afw / 10.0, format(precision, ".3f"),
+                                      format(recall, ".3f"), format(F1_score, ".3f")])
 
 
 ##############################################
@@ -1122,9 +645,7 @@ def improvement2(li):
 def cal_country_level(label):
     with open("entity_titleCountry_abstractCountry_standard1.json", "r") as fr:
         data = json.load(fr)
-        # title_country = [value[0] for key, value in data.items()]
         title_country = improvement1([value[0] for key, value in data.items()])
-        # abstract_country = [value[1] for key, value in data.items()]
         abstract_country = improvement1([value[1] for key, value in data.items()])
 
     geo_label = []
@@ -1137,7 +658,7 @@ def cal_country_level(label):
     with open("affiliation_country_city_org.json", "r") as fr1:
         data1 = json.load(fr1)
         affiliation_country = []
-        for key, value in data1.items():
+        for value in data1.items():
             a = [k+","+str(v) for k, v in value[0].items() if value[0][k] == max(value[0].values())]
             affiliation_country.append(",".join(a))
     affiliation_country = improvement1(affiliation_country)
@@ -1189,7 +710,7 @@ def different_weights_combination(label_country, title_country, abstract_country
     return precision, recall
 
 ##############################################
-###################  Finish  #################
+########### Helper Functions  ################
 ##############################################
 
 def parse_data_author(data):
@@ -1198,7 +719,6 @@ def parse_data_author(data):
     root = ET.fromstring(data)
     for medlineCitation in root.iter("MedlineCitation"):
         affiliations_list = []
-        abstractText_list = []
         author_affiliation = []
         author_list = []
         PMID = medlineCitation.find("PMID").text
@@ -1215,46 +735,14 @@ def parse_data_author(data):
                             affiliation = affiliationInfo.find("Affiliation").text
                             affiliations_list.append(affiliation)
                             author_affiliation.append([full_name, affiliation])
-            # print("1", author_list)
-            # print("11", len(author_list))
-            # print("2", affiliations_list)
-            # print("22", len(affiliations_list))
-            # print("3", author_affiliation)
-            # print("33", len(author_affiliation))
             affiliations = "$".join(affiliations_list)
             if affiliations == "":
                 affiliations = "None"
             authors = ",".join(author_list)
             if len(author_list) != len(affiliations_list):
                 judge_same = False
-            # print("judge", judge_same)
             dic[PMID] = [authors, affiliations, len(author_list), len(affiliations_list), judge_same]
     return dic
-
-def xlsx_to_csv_pd():
-    data_xls = pd.read_excel('dataset.xlsx', index_col=0)
-    data_xls.to_csv('dataset.csv', encoding='utf-8')
-
-def get_precision(a, b):
-    num = 0
-    for i in range(len(a)):
-        if a[i] == b[i]:
-            num += 1
-    return num/len(a)
-
-def get_json(PMID):
-    data1 = {}
-    for i in list(PMID):
-        # https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=4304705
-        efetch = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?&db=pubmed&retmode=xml&id=%s" % (i)
-        handle = urlopen(efetch)
-        data_xml = handle.read()
-        data = parse_data_author(data_xml)
-        data1.update(data)
-    # print(len(data1))
-    # with open("dataset_author.json", "w") as f:
-    #     json.dump(data1, f)
-    #     print("finish json.")
 
 def get_csv(PMID):
     data1 = {}
@@ -1264,9 +752,6 @@ def get_csv(PMID):
         data_xml = handle.read()
         data = parse_data_author(data_xml)
         data1.update(data)
-    # with open("author_affiliation_json.json", "w") as f:
-    #     json.dump(data1, f)
-    #     print("finish json.")
 
     fw = open("author_affiliation.csv", "w", newline="")
     csv_write = csv.writer(fw)
@@ -1275,78 +760,17 @@ def get_csv(PMID):
         csv_write.writerow([i, data1[i][0], data1[i][1], data1[i][2], data1[i][3], data1[i][4]])
     print("Finish csv.")
 
-def get_standard_improvement(a):
-    b = []
-    for i in a:
-#         print(type(i))
-        if i != "None":
-            i = i.replace("the ","")
-            s = rangeBuilder.standardizeCountry(i)[0]
-            if s != "":
-                b.append(s)
-            else:
-                b.append(i)
-        else:
-            b.append(i)
-    return b
 
 def get_standard(a):
     b = []
     for i in a:
-#         print("i",i)
-#         print("i",i.split(","))
-#         print(type(i))
         ss = []
         for a in i.split(","):
-            # print("a",a)
-            # print(len(i.split(",")))
             a = a.replace("the ","")
             s = rangeBuilder.standardizeCountry(a)[0]
-#             print("s",s)
             ss.append(s)
-#         print("ss",ss)
         b.append(",".join(ss))
     return b
-
-def delete_none(a, b):
-    true = []
-    pred = []
-    for i in range(len(a)):
-        if a[i] == "None":
-            continue
-        else:
-            true.append(a[i])
-            pred.append(b[i])
-    return np.array(true), np.array(pred)
-
-def compare(li1, li2):
-    li1 = str(li1).replace("nan", "").split(",")
-    li2 = str(li2).replace("nan", "").split(",")
-    if li1 == [] or li2 == []:
-        return ""
-    for i in li1:
-        sim_list = [Levenshtein.ratio(i, m) for m in li2]
-        sim_max = max(sim_list) if sim_list != [] else 0
-        if sim_max > 0.8:
-            return i
-
-def get_test1(a):
-    b = []
-    for i in a:
-        geo = []
-        for ii in i.split(","):
-            location = geolocator.geocode(ii, language="en")
-            if len(str(location).split(",")) > 1:
-                location = ""
-            geo.append(str(location))
-        geo = ",".join(geo)
-        b.append(geo)
-    # location = geolocator.geocode(loc, language="en")
-    # if len(str(location).split(",")) > 1:
-    #     return ""
-    print(b)
-    return b
-
 
 ##############################################
 ##############  main function  ###############
@@ -1361,59 +785,49 @@ if __name__ == "__main__":
     label_org = dataset.pop("Data-Location-org")
     PMCID = dataset.pop("PMCID")
 
-    #get_country_city_organization()
-
     #### get text and entities
-    get_title_abstract_affiliation_json(PMID)
-    # parse_title_abstract_affiliation()
-    # get_country_city_organization()
-    # get_fullText_json(PMCID)
-    # parse_fullText()
+    #get_title_abstract_affiliation_json(PMID)
+    #parse_title_abstract_affiliation()
+    #get_affiliation_country_city_organization()
+    #get_fullText_json(PMCID)
+    #parse_fullText()
 
-    # get_fullText_country()
-    # get_title_country()
-    # get_abstract_country()
-    # get_affiliation_country()
+    #get_fullText_entity("country")
+    #get_entity("country", "title", "jsonFiles/title_abstract_entities.json", "jsonFiles/title/count_country.json")
+    #get_entity("country", "abstract", "jsonFiles/title_abstract_entities.json", "jsonFiles/abstract/count_country.json")
+    #get_entity("country", "affiliation", "jsonFiles/affiliation/country_org.json", "jsonFiles/affiliation/count_country.json")
 
-    # get_fullText_organisation()
-    # get_fullText_organisation_disambiguation()
-    # get_title_organisation()
-    # get_abstract_organisation()
-    # get_affiliation_organisation()
-    ####
+    #get_fullText_entity("organisation")
+    #get_fullText_organisation_disambiguation()
+    #get_entity("organisation", "title", "jsonFiles/title_abstract_entities.json", "jsonFiles/title/count_org.json")
+    #get_entity("organisation", "abstract", "jsonFiles/title_abstract_entities.json", "jsonFiles/abstract/count_org.json")
+    #get_entity("organisation", "affiliation", "jsonFiles/affiliation/country_org.json", "jsonFiles/affiliation/count_org.json")
 
     #### calculate country baseline
-    # cal_fullText_country_pre_recall()
-    # cal_title_country_pre_recall()
-    # cal_abstract_country_pre_recall()
-    # cal_affiliation_country_pre_recall()
-
+    # cal_f1_pre_recall("country", "full text", "jsonFiles/fullText/count_country.json", False)
+    # cal_f1_pre_recall("country", "title", "jsonFiles/title/count_country.json", False)
+    # cal_f1_pre_recall("country", "abstract", "jsonFiles/abstract/count_country.json", False)
+    # cal_f1_pre_recall("country", "affiliation", "jsonFiles/affiliation/count_country.json", False)
 
     #### calculate organisation baseline
-    # cal_fullText_organisation_pre_recall()
-    # cal_title_organisation_pre_recall()
-    # cal_abstract_organisation_pre_recall()
-    # cal_affiliation_organisation_pre_recall()
+    # cal_f1_pre_recall("organisation", "full text", "jsonFiles/fullText/count_org_unambiguous.json", False)
+    # cal_f1_pre_recall("organisation", "title", "jsonFiles/title/count_org.json", False)
+    # cal_f1_pre_recall("organisation", "abstract", "jsonFiles/abstract/count_org.json", False)
+    # cal_f1_pre_recall("organisation", "affiliation", "jsonFiles/affiliation/count_org.json", False)
 
-
-    #### calculate country improvement
-    # calIm_fulltext_country_pre_recall()
-    # calIm_title_country_pre_recall()
-    # calIm_abstract_country_pre_recall()
-    # calIm_affiliation_country_pre_recall()
-
+    #### calculate country improvement (last argument changed to True)
+    # cal_f1_pre_recall("country", "full text", "jsonFiles/fullText/count_country.json", True)
+    # cal_f1_pre_recall("country", "title", "jsonFiles/title/count_country.json", True)
+    # cal_f1_pre_recall("country", "abstract", "jsonFiles/abstract/count_country.json", True)
+    # cal_f1_pre_recall("country", "affiliation", "jsonFiles/affiliation/count_country.json", True)
+    
     #### calculate combination weights
     # cal_combination_weights_country()
     # cal_combination_weights_organisation()
-
-
-
 
     # get_entity_title_abstract_standard()
     # cal_country_level(label_country)
 
     # get_csv(PMID)
 
-    print("time", time.time()-startime)
-
-
+    print("Program finished in " + str(time.time()-startime) + " seconds")
