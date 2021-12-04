@@ -123,7 +123,7 @@ def parse_fullText():
         json.dump(fullText_sentence_entity, fw)
         print("Wrote full text countries and organisations into jsonFiles/FullText/country_organisation.json")
 
-
+''' Get the specified entity (country or organisation) from full text. '''
 def get_fullText_entity(entityType):
     print("Retrieving " + entityType + " count from full text ...")
     dataset = pd.read_csv("dataset_org.csv")
@@ -201,7 +201,7 @@ def get_fullText_organisation_disambiguation():
 ###########################################################
 """
  This step is to get the title, abstract and affiliation plaintext based on the PMID and store these message 
- in a json file "dataset.json". There is a csv file "dataset.csv" storing PMID and Data-Location-country 
+ in a json file "jsonFilesdataset.json". There is a csv file "dataset.csv" storing PMID and Data-Location-country 
  annotated by ourselves.
 """
 
@@ -237,13 +237,13 @@ def get_title_abstract_affiliation_json(PMID):
         data_xml = handle.read()
         data = get_data(data_xml)
         data1.update(data)
-    with open("dataset.json", "w") as f:
+    with open("jsonFiles/dataset.json", "w") as f:
         json.dump(data1, f)
-        print("Wrote title, abstract and affiliations to dataset.json")
+        print("Wrote title, abstract and affiliations to jsonFiles/dataset.json")
 
 def parse_title_abstract_affiliation():
     print("Extracting countries and organisations from titles and abstracts ... ")
-    with open("dataset.json", "r") as fr:
+    with open("jsonFiles/dataset.json", "r") as fr:
         data = json.load(fr)
         dic = {}
         j = 0
@@ -362,6 +362,12 @@ def get_affiliation_country_city_organization():
     print("Wrote countries, cities and organisations of affiliations to jsonFiles/affiliation/country_org.json")
     fw.close()
 
+''' Get the specified entity (country or organisation) from the specified section of the source. 
+Arguments to provide: 
+- entityType (country or organisation)
+- section(title, abstract or affiliation),
+- file to read from
+- file to write to.'''
 def get_entity(entityType, section, fileToRead, fileToWrite):
     print("Retrieving " + entityType + " count in " + section + "...")
     dataset = pd.read_csv("dataset_org.csv")
@@ -444,6 +450,13 @@ def get_geocode(a):
         b.append(geo)
     return b
 
+''' Calculate F1 score, precision score and recall score.
+Arguments to provide: 
+- entityType (country or organisation)
+- section (full text, title, abstract or affiliation),
+- jsonFile (file to read from)
+- improvement: boolean variable determining if user is calculating improvement.
+'''
 def cal_f1_pre_recall(entityType, section, jsonFile, improvement):
     if improvement:
         print("Calculating imrpovement score for " + entityType + " in the " + section + "...")
@@ -488,14 +501,15 @@ def cal_f1_pre_recall(entityType, section, jsonFile, improvement):
 ###########################################################
 
 def cal_combination_weights_country():
+    print("Calculating combination weights for countries ...")
     dataset = pd.read_csv("dataset_org.csv")
     PMID = dataset.pop("PMID")
     label_country = dataset.pop("Data-Location-country")
 
     fr_fullText = open("jsonFiles/fullText/count_country.json", "r")
-    fr_title = open("entity_count_title_country.json", "r")
-    fr_abstract = open("entity_count_abstract_country.json", "r")
-    fr_affiliation = open("entity_count_affiliation_country.json", "r")
+    fr_title = open("jsonFiles/title/count_country.json", "r")
+    fr_abstract = open("jsonFiles/abstract/count_country.json", "r")
+    fr_affiliation = open("jsonFiles/affiliation/count_country.json", "r")
 
     dataset1 = json.load(fr_fullText)
     dataset2 = json.load(fr_title)
@@ -506,7 +520,7 @@ def cal_combination_weights_country():
     abstract = list(dataset3.values())
     affiliation = list(dataset4.values())
 
-    file1 = open("country_weights4.csv", "w")
+    file1 = open("country_weights.csv", "w")
     writer1 = csv.writer(file1)
     writer1.writerow(
         ["affiliation weight", "title weight", "abstract weight", "full text weight", "precision", "recall"])
@@ -527,6 +541,8 @@ def cal_combination_weights_country():
                     print(recall)
                     writer1.writerow([afw / 10.0, tw / 10.0, aw / 10.0, format(precision, ".3f"),
                                       format(recall, ".3f"), format(F1_score, ".3f")])
+    
+    print("Finished calculating combination weights for countries.")
 
 
 def cal_combination_weights(PMID, title, abstract, affiliation, t_weight, a_weight, af_weight):
@@ -537,7 +553,6 @@ def cal_combination_weights(PMID, title, abstract, affiliation, t_weight, a_weig
             result.append("")
             continue
         if title:
-            # print("title", title)
             for key, value in title[i].items():
                 dic[key] = int(dic.get(key, 0)) + int(value) * t_weight
         if abstract:
@@ -547,7 +562,6 @@ def cal_combination_weights(PMID, title, abstract, affiliation, t_weight, a_weig
             for key2, value2 in affiliation[i].items():
                 if key2:
                     dic[key2] = int(dic.get(key2, 0)) + int(value2) * af_weight
-        # r = ",".join([key4 for key4, value4 in dic.items() if value4 == max(dic.values()) and value4 != 0])
         r = [key4 for key4, value4 in dic.items() if value4 == max(dic.values()) and value4 != 0]
         if r:
             result.append(r[0])
@@ -556,14 +570,15 @@ def cal_combination_weights(PMID, title, abstract, affiliation, t_weight, a_weig
     return result
 
 def cal_combination_weights_organisation():
+    print("Calculating combination weights for organisations ...")
     dataset = pd.read_csv("dataset_org.csv")
     PMID = dataset.pop("PMID")
     label_org = dataset.pop("Data-Location-org")
 
     fr_fullText = open("jsonFiles/fullText/count_org.json", "r")
-    fr_title = open("entity_count_title_organisation.json", "r")
-    fr_abstract = open("entity_count_abstract_organisation.json", "r")
-    fr_affiliation = open("entity_count_affiliation_organisation.json", "r")
+    fr_title = open("jsonFiles/title/count_org.json", "r")
+    fr_abstract = open("jsonFiles/abstract/count_org.json", "r")
+    fr_affiliation = open("jsonFiles/affiliation/count_org.json", "r")
 
     dataset1 = json.load(fr_fullText)
     dataset2 = json.load(fr_title)
@@ -574,7 +589,7 @@ def cal_combination_weights_organisation():
     abstract = list(dataset3.values())
     affiliation = list(dataset4.values())
     
-    file1 = open("organisation_weights2.csv", "w")
+    file1 = open("organisation_weights.csv", "w")
     writer1 = csv.writer(file1)
     writer1.writerow(
         ["title weight", "abstract weight", "affiliation weight", "precision", "recall", "F1-score"])
@@ -597,10 +612,11 @@ def cal_combination_weights_organisation():
                     print(recall)
                     writer1.writerow([tw / 10.0, aw / 10.0, afw / 10.0, format(precision, ".3f"),
                                       format(recall, ".3f"), format(F1_score, ".3f")])
+    print("Finished calculating combination weights for organisations.")
 
 
 ##############################################
-#########  result of country level  ##########
+######### Calculate country level  ###########
 ##############################################
 
 def improvement1(li):
@@ -622,7 +638,6 @@ def improvement1(li):
             result.append("united states"+","+l2)
         else:
             result.append(l1.lower()+","+l2)
-    # print("finish")
     return result
 
 def improvement2(li):
@@ -639,11 +654,11 @@ def improvement2(li):
             result.append("united states")
         else:
             result.append(l.lower())
-    # print("2 finish")
     return result
 
 def cal_country_level(label):
-    with open("entity_titleCountry_abstractCountry_standard1.json", "r") as fr:
+    print("Calculating country level ...")
+    with open("jsonFiles/title_abstract_country_standard.json", "r") as fr:
         data = json.load(fr)
         title_country = improvement1([value[0] for key, value in data.items()])
         abstract_country = improvement1([value[1] for key, value in data.items()])
@@ -655,10 +670,10 @@ def cal_country_level(label):
         geo_label.append(geo)
     geo_label = improvement2(geo_label)
 
-    with open("affiliation_country_city_org.json", "r") as fr1:
+    with open("jsonFiles/affiliation/country_city_org.json", "r") as fr1:
         data1 = json.load(fr1)
         affiliation_country = []
-        for value in data1.items():
+        for key, value in data1.items():
             a = [k+","+str(v) for k, v in value[0].items() if value[0][k] == max(value[0].values())]
             affiliation_country.append(",".join(a))
     affiliation_country = improvement1(affiliation_country)
@@ -674,6 +689,7 @@ def cal_country_level(label):
                                                                           affiliation_country, tw, aw, afw)
                         csv_write.writerow(
                             [tw / 10.0, aw / 10.0, afw / 10.0, format(precision, ".4f"), format(recall, ".4f")])
+    print("Finished calculating country level.")
 
 def different_weights_combination(label_country, title_country, abstract_country, affiliation_country, title_weight,
                                   abstract_weight, affiliation_weight):
@@ -682,22 +698,17 @@ def different_weights_combination(label_country, title_country, abstract_country
         dic = {}
         if title_country[i] != "" and title_country[i]:
             a1, a2 = title_country[i].split(",")
-            # print("a1, a2", a1, a2)
             dic[a1] = dic.get(a1, 0) + title_weight * int(a2)
         if abstract_country[i] != "":
             a3, a4 = abstract_country[i].split(",")
-            # print("a3, a4", a3, a4)
             dic[a3] = dic.get(a3, 0) + abstract_weight * int(a4)
         if affiliation_country[i] != "":
             a5, a6 = affiliation_country[i].split(",")
             dic[a5] = dic.get(a5, 0) + affiliation_weight * int(a6)
-            # print("a5, a6", a5, a6)
         c = ",".join([key for key, value in dic.items() if value == max(dic.values()) and value != 0])
         if title_country[i] == "" and abstract_country[i] == "" and affiliation_country[i] == "":
             c = ""
         countries.append(c)
-        # print("c", c)
-    print("countries", countries)
 
     y_true = np.array(label_country)
     y_pred = np.array(countries)
@@ -705,8 +716,8 @@ def different_weights_combination(label_country, title_country, abstract_country
     precision = precision_score(y_true, y_pred, average="weighted")
     recall = recall_score(y_true, y_pred, average="weighted")
 
-    print("precision", precision)
-    print("recall", recall)
+    print("precision:", precision)
+    print("recall:", recall)
     return precision, recall
 
 ##############################################
@@ -745,6 +756,7 @@ def parse_data_author(data):
     return dic
 
 def get_csv(PMID):
+    print("Getting csv ...")
     data1 = {}
     for i in list(PMID):
         efetch = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?&db=pubmed&retmode=xml&id=%s" % (i)
@@ -758,7 +770,7 @@ def get_csv(PMID):
     csv_write.writerow(["PMID", "Author", "Affiliation", "length(Author)", "length(Affiliation)", "equal"])
     for i in list(data1.keys()):
         csv_write.writerow([i, data1[i][0], data1[i][1], data1[i][2], data1[i][3], data1[i][4]])
-    print("Finish csv.")
+    print("Finished getting csv.")
 
 
 def get_standard(a):
@@ -822,12 +834,12 @@ if __name__ == "__main__":
     # cal_f1_pre_recall("country", "affiliation", "jsonFiles/affiliation/count_country.json", True)
     
     #### calculate combination weights
-    # cal_combination_weights_country()
-    # cal_combination_weights_organisation()
+    #cal_combination_weights_country()
+    #cal_combination_weights_organisation()
 
-    # get_entity_title_abstract_standard()
-    # cal_country_level(label_country)
+    #cal_country_level(label_country)
 
+    ####
     # get_csv(PMID)
 
     print("Program finished in " + str(time.time()-startime) + " seconds")

@@ -4,7 +4,10 @@
 ## PROJECT CONTENTS
 - BioPython.py: main project file.
 - nltkNER.py, spacyNER.py and stanford.py: extra python files showcasing three methods of extracting organisations and locations. standfordNER.py is the only one used in the main project file.
-- json Files: contains json files used read and written to in the main python project
+- json Files: contains json files used in main project
+    - folders withing jsonFiles contain the sections of text in which json files relating to that section can be found --> title, abstract, affiliation, full text
+- author_affiliation.csv and dataset_org.csv: datasets
+- country_weights.csv, organisation_weights.csv and combination_weights.csv: results of methods cal_combination_weights_country(), cal_combination_weights_organisation() and cal_country_level(label) from BioPython.py respectively.
 
 ## NEW USERS - How to begin
 1. Opening the project, all the necessary library imports will cause errors if not previously installed. As a new user, make sure to go through each of the python files and download the required libraries.
@@ -15,3 +18,4 @@
 3. In both BioPython.py and stanfordNER.py there is a commented subheading called "variables to change". Under this subheading new users must change the variables to match certain locations of files in their device. Specifically, this includes the location of standford coreNLP download and R library download. 
 
 ## HOW TO USE PROJECT
+At the bottom of BioPython.py, in the main function are commented methods which can be uncommented to run. To run the project, type "python BioPython.py" or "sudo python BioPython.py" for MAC OS users in command line. 
