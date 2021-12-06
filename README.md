@@ -25,6 +25,7 @@
         - rangeBuilder
         - terra
         - rgdal
+    WINDOW USERS ONLY: If rpy2 fails to run after the above steps, alternatively, the guide from the source https://jianghaochu.github.io/how-to-install-rpy2-in-windows-10.html needs to be followed to successfully download rpy2.
 
 4. In both BioPython.py and stanfordNER.py there is a commented subheading called "variables to change". Under this subheading new users must change the variables to match certain locations of files in their device. Specifically, this includes the location of standford coreNLP download and R library download. 
 
