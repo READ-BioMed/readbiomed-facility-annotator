@@ -8,6 +8,7 @@
     - folders withing jsonFiles contain the sections of text in which json files relating to that section can be found --> title, abstract, affiliation, full text
 - author_affiliation.csv and dataset_org.csv: datasets
 - country_weights.csv, organisation_weights.csv and combination_weights.csv: results of methods cal_combination_weights_country(), cal_combination_weights_organisation() and cal_country_level(label) from BioPython.py respectively.
+- requirements.txt: python library requirements.
 
 ## NEW USERS - How to begin
 1. Opening the project, all the necessary library imports will cause errors if not previously installed. To install all the requirements run the command `python -m pip install -r requirements.txt`.
@@ -16,10 +17,10 @@
 2. Visit https://stanfordnlp.github.io/CoreNLP/download.html to download stanfordCoreNLP for your device. 
     MAC USERS ONLY: For the standfordCoreNLP packages, you must run the project from root user to import, due to security changes in the recent updates. Simply, run the project from command line as usual but prefixing with `sudo`.
 
-3. Additional rpy2 packages found in BioPython.py will need R studio software to be downloaded. This can be done following the steps below.
+3. Additional rpy2 packages found in BioPython.py will need R studio software to be downloaded. This can be done with the following steps:
     1. Download R from https://cran.r-project.org/.
     2. Download R studio from https://www.rstudio.com/products/rstudio/download/#download.
-    3. In R studio, click the "Install" button and in the white space provided write the name of a package.
+    3. In R studio, click the "Install" button, and in the white space provided write the name of a required package.
         The required packages are:
         - rangeBuilder
         - terra
