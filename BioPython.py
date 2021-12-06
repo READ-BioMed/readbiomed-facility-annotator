@@ -4,8 +4,8 @@ from stanfordcorenlp import StanfordCoreNLP
 ##############################################
 #### VARIABLES TO CHANGE FOR NEW USERS #######
 ##############################################
-stanfordNERnlp = StanfordCoreNLP(r'/Users/sonya/Downloads/stanford-corenlp-4.3.2', lang="en")
-R_HOME = "/usr/local/bin/R"
+stanfordNERnlp = StanfordCoreNLP(r"PLEASE_DEFINE", lang="en")
+R_HOME = "PLEASE_DEFINE"
 
 
 ##############################################
@@ -16,7 +16,6 @@ import math
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 from Bio import Entrez
-Entrez.email = 'jiayuanw1@student.unimelb.edu.au'
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element
 from urllib.request import urlopen
@@ -38,10 +37,6 @@ import re
 from geotext import GeoText
 
 from nltk.tokenize import sent_tokenize
-
-import Levenshtein
-
-
 
 ### GEOPY ###
 import geopy.geocoders

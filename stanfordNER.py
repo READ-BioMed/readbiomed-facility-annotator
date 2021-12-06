@@ -1,7 +1,7 @@
 from stanfordcorenlp import StanfordCoreNLP
 
 ### Variable to change
-stanfordNERnlp = StanfordCoreNLP(r'/Users/sonya/Downloads/stanford-corenlp-4.3.2', lang="en")
+stanfordNERnlp = StanfordCoreNLP(r"PLEASE_DEFINE", lang="en")
 ###
 
 def extract_countries_StanfordNER(stanfordNERnlp, plaintext):

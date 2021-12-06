@@ -10,12 +10,22 @@
 - country_weights.csv, organisation_weights.csv and combination_weights.csv: results of methods cal_combination_weights_country(), cal_combination_weights_organisation() and cal_country_level(label) from BioPython.py respectively.
 
 ## NEW USERS - How to begin
-1. Opening the project, all the necessary library imports will cause errors if not previously installed. As a new user, make sure to go through each of the python files and download the required libraries.
-    1. rpy2 packages found in BioPython.py will need R studio software to be downloaded. In R studio, the packages rangeBuilder and terra must be downloaded for the project to run.
+1. Opening the project, all the necessary library imports will cause errors if not previously installed. To install all the requirements run the command `python -m pip install -r requirements.txt`.
+    1. In addition the command  `python -m spacy download en_core_web_sm` must be ran.
 
-2. MAC USERS ONLY: For the standfordCoreNLP packages, you must run the project from root user to import, due to security changes in the recent updates. Simply, run the project from command line as usual but prefixing with "sudo ".
+2. Visit https://stanfordnlp.github.io/CoreNLP/download.html to download stanfordCoreNLP for your device. 
+    MAC USERS ONLY: For the standfordCoreNLP packages, you must run the project from root user to import, due to security changes in the recent updates. Simply, run the project from command line as usual but prefixing with `sudo`.
 
-3. In both BioPython.py and stanfordNER.py there is a commented subheading called "variables to change". Under this subheading new users must change the variables to match certain locations of files in their device. Specifically, this includes the location of standford coreNLP download and R library download. 
+3. Additional rpy2 packages found in BioPython.py will need R studio software to be downloaded. This can be done following the steps below.
+    1. Download R from https://cran.r-project.org/.
+    2. Download R studio from https://www.rstudio.com/products/rstudio/download/#download.
+    3. In R studio, click the "Install" button and in the white space provided write the name of a package.
+        The required packages are:
+        - rangeBuilder
+        - terra
+        - rgdal
+
+4. In both BioPython.py and stanfordNER.py there is a commented subheading called "variables to change". Under this subheading new users must change the variables to match certain locations of files in their device. Specifically, this includes the location of standford coreNLP download and R library download. 
 
 ## HOW TO USE PROJECT
-At the bottom of BioPython.py, in the main function are commented methods which can be uncommented to run. To run the project, type "python BioPython.py" or "sudo python BioPython.py" for MAC OS users in command line. 
+At the bottom of BioPython.py, in the main function are commented methods which can be uncommented to run. To run the project, type `python BioPython.py` or `sudo python BioPython.py` for MAC OS users in command line. 
