@@ -6,6 +6,7 @@ from stanfordcorenlp import StanfordCoreNLP
 ##############################################
 stanfordNERnlp = StanfordCoreNLP(r"PLEASE_DEFINE", lang="en")
 R_HOME = "PLEASE_DEFINE"
+#R_USER = "PLEASE_DEFINE_IF_WINDOWS_USER"
 
 
 ##############################################
