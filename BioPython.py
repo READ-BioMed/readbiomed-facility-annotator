@@ -492,230 +492,6 @@ def cal_f1_pre_recall(entityType, section, jsonFile, improvement):
     print("f1 score:", f1)
     fr.close()
 
-###########################################################
-################ Cal combination weights ##################
-###########################################################
-
-def cal_combination_weights_country():
-    print("Calculating combination weights for countries ...")
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_country = dataset.pop("Data-Location-country")
-
-    fr_fullText = open("jsonFiles/fullText/count_country.json", "r")
-    fr_title = open("jsonFiles/title/count_country.json", "r")
-    fr_abstract = open("jsonFiles/abstract/count_country.json", "r")
-    fr_affiliation = open("jsonFiles/affiliation/count_country.json", "r")
-
-    dataset1 = json.load(fr_fullText)
-    dataset2 = json.load(fr_title)
-    dataset3 = json.load(fr_abstract)
-    dataset4 = json.load(fr_affiliation)
-
-    title = list(dataset2.values())
-    abstract = list(dataset3.values())
-    affiliation = list(dataset4.values())
-
-    file1 = open("country_weights.csv", "w")
-    writer1 = csv.writer(file1)
-    writer1.writerow(
-        ["affiliation weight", "title weight", "abstract weight", "full text weight", "precision", "recall"])
-    for afw in range(1, 10):
-        for tw in range(1, 10):
-            for aw in range(1, 10):
-                if tw + aw + afw == 10:
-                    country = cal_combination_weights(PMID, title, abstract, affiliation, tw, aw, afw)
-                    country_std = get_standard_countries(country)
-                    label_std = get_standard_countries(label_country)
-                    y_pred = np.array(country_std)
-                    y_true = np.array(list(label_std))
-
-                    precision = precision_score(y_true, y_pred, average="weighted")
-                    recall = recall_score(y_true, y_pred, average="weighted")
-                    F1_score = f1_score(y_true, y_pred, average="weighted")
-                    print(precision)
-                    print(recall)
-                    writer1.writerow([afw / 10.0, tw / 10.0, aw / 10.0, format(precision, ".3f"),
-                                      format(recall, ".3f"), format(F1_score, ".3f")])
-    
-    print("Finished calculating combination weights for countries.")
-
-
-def cal_combination_weights(PMID, title, abstract, affiliation, t_weight, a_weight, af_weight):
-    result = []
-    for i in range(len(PMID)):
-        dic = {}
-        if not title and not abstract and not affiliation:
-            result.append("")
-            continue
-        if title:
-            for key, value in title[i].items():
-                dic[key] = int(dic.get(key, 0)) + int(value) * t_weight
-        if abstract:
-            for key1, value1 in abstract[i].items():
-                dic[key1] = int(dic.get(key1, 0)) + int(value1) * a_weight
-        if affiliation:
-            for key2, value2 in affiliation[i].items():
-                if key2:
-                    dic[key2] = int(dic.get(key2, 0)) + int(value2) * af_weight
-        r = [key4 for key4, value4 in dic.items() if value4 == max(dic.values()) and value4 != 0]
-        if r:
-            result.append(r[0])
-        else:
-            result.append("")
-    return result
-
-def cal_combination_weights_organisation():
-    print("Calculating combination weights for organisations ...")
-    dataset = pd.read_csv("dataset_org.csv")
-    PMID = dataset.pop("PMID")
-    label_org = dataset.pop("Data-Location-org")
-
-    fr_fullText = open("jsonFiles/fullText/count_org.json", "r")
-    fr_title = open("jsonFiles/title/count_org.json", "r")
-    fr_abstract = open("jsonFiles/abstract/count_org.json", "r")
-    fr_affiliation = open("jsonFiles/affiliation/count_org.json", "r")
-
-    dataset1 = json.load(fr_fullText)
-    dataset2 = json.load(fr_title)
-    dataset3 = json.load(fr_abstract)
-    dataset4 = json.load(fr_affiliation)
-
-    title = list(dataset2.values())
-    abstract = list(dataset3.values())
-    affiliation = list(dataset4.values())
-    
-    file1 = open("organisation_weights.csv", "w")
-    writer1 = csv.writer(file1)
-    writer1.writerow(
-        ["title weight", "abstract weight", "affiliation weight", "precision", "recall", "F1-score"])
-    for tw in range(1, 10):
-        for aw in range(1, 10):
-            for afw in range(1, 10):
-                if tw + aw + afw == 10:
-                    organisation = cal_combination_weights(PMID, title, abstract, affiliation, tw, aw,
-                                                           afw)
-
-                    organisation_std = get_standard_countries(organisation)
-                    label_std = get_standard_countries(label_org)
-                    y_pred = np.array(organisation_std)
-                    y_true = np.array(list(label_std))
-
-                    precision = precision_score(y_true, y_pred, average="weighted")
-                    recall = recall_score(y_true, y_pred, average="weighted")
-                    F1_score = f1_score(y_true, y_pred, average="weighted")
-                    print(precision)
-                    print(recall)
-                    writer1.writerow([tw / 10.0, aw / 10.0, afw / 10.0, format(precision, ".3f"),
-                                      format(recall, ".3f"), format(F1_score, ".3f")])
-    print("Finished calculating combination weights for organisations.")
-
-
-##############################################
-######### Calculate country level  ###########
-##############################################
-
-def improvement1(li):
-    result = []
-    for l in li:
-        if l == [] or l.split(",")[0] == "":
-            result.append("")
-            continue
-        if len(l.split(",")) == 2:
-            l1, l2 = l.split(",")
-        if len(l.split(",")) >= 4:
-            l1, l2 = l.split(",")[0], l.split(",")[1]
-
-        if l1.lower() == "republic of china":
-            result.append("china"+","+l2)
-        elif l1.lower() == "korea":
-            result.append("south korea"+","+l2)
-        elif l1.lower() == "america":
-            result.append("united states"+","+l2)
-        else:
-            result.append(l1.lower()+","+l2)
-    return result
-
-def improvement2(li):
-    result = []
-    for l in li:
-        if l == []:
-            result.append("")
-            continue
-        if l.lower() == "republic of china":
-            result.append("china")
-        elif l.lower() == "korea":
-            result.append("south korea")
-        elif l.lower() == "america" or l.lower() == "u.s.":
-            result.append("united states")
-        else:
-            result.append(l.lower())
-    return result
-
-def cal_country_level(label):
-    print("Calculating country level ...")
-    with open("jsonFiles/title_abstract_country_standard.json", "r") as fr:
-        data = json.load(fr)
-        title_country = improvement1([value[0] for key, value in data.items()])
-        abstract_country = improvement1([value[1] for key, value in data.items()])
-
-    geo_label = []
-    label_country = get_standard(label)
-    for s in label_country:
-        geo = get_geocode(s) if not s.isupper() and not s else s
-        geo_label.append(geo)
-    geo_label = improvement2(geo_label)
-
-    with open("jsonFiles/affiliation/country_city_org.json", "r") as fr1:
-        data1 = json.load(fr1)
-        affiliation_country = []
-        for key, value in data1.items():
-            a = [k+","+str(v) for k, v in value[0].items() if value[0][k] == max(value[0].values())]
-            affiliation_country.append(",".join(a))
-    affiliation_country = improvement1(affiliation_country)
-
-    with open("combination_weights.csv", "w") as fw:
-        csv_write = csv.writer(fw)
-        csv_write.writerow(["title weight", "abstract weight", "affiliation weight", "precision", "recall"])
-        for tw in range(1, 10):
-            for aw in range(1, 10):
-                for afw in range(1, 10):
-                    if tw + aw + afw == 10:
-                        precision, recall = different_weights_combination(geo_label, title_country, abstract_country,
-                                                                          affiliation_country, tw, aw, afw)
-                        csv_write.writerow(
-                            [tw / 10.0, aw / 10.0, afw / 10.0, format(precision, ".4f"), format(recall, ".4f")])
-    print("Finished calculating country level.")
-
-def different_weights_combination(label_country, title_country, abstract_country, affiliation_country, title_weight,
-                                  abstract_weight, affiliation_weight):
-    countries = []
-    for i in range(len(label_country)):
-        dic = {}
-        if title_country[i] != "" and title_country[i]:
-            a1, a2 = title_country[i].split(",")
-            dic[a1] = dic.get(a1, 0) + title_weight * int(a2)
-        if abstract_country[i] != "":
-            a3, a4 = abstract_country[i].split(",")
-            dic[a3] = dic.get(a3, 0) + abstract_weight * int(a4)
-        if affiliation_country[i] != "":
-            a5, a6 = affiliation_country[i].split(",")
-            dic[a5] = dic.get(a5, 0) + affiliation_weight * int(a6)
-        c = ",".join([key for key, value in dic.items() if value == max(dic.values()) and value != 0])
-        if title_country[i] == "" and abstract_country[i] == "" and affiliation_country[i] == "":
-            c = ""
-        countries.append(c)
-
-    y_true = np.array(label_country)
-    y_pred = np.array(countries)
-
-    precision = precision_score(y_true, y_pred, average="weighted")
-    recall = recall_score(y_true, y_pred, average="weighted")
-
-    print("precision:", precision)
-    print("recall:", recall)
-    return precision, recall
-
 ##############################################
 ########### Helper Functions  ################
 ##############################################
@@ -793,31 +569,31 @@ if __name__ == "__main__":
     label_org = dataset.pop("Data-Location-org")
     PMCID = dataset.pop("PMCID")
 
-    #### get text and entities
-    #get_title_abstract_affiliation_json(PMID)
-    #parse_title_abstract_affiliation()
-    #get_affiliation_country_city_organization()
-    #get_fullText_json(PMCID)
-    #parse_fullText()
+    #### get text and entities ####
+    get_title_abstract_affiliation_json(PMID)
+    parse_title_abstract_affiliation()
+    get_affiliation_country_city_organization()
+    get_fullText_json(PMCID)
+    parse_fullText()
 
-    #get_fullText_entity("country")
-    #get_entity("country", "title", "jsonFiles/title_abstract_entities.json", "jsonFiles/title/count_country.json")
-    #get_entity("country", "abstract", "jsonFiles/title_abstract_entities.json", "jsonFiles/abstract/count_country.json")
-    #get_entity("country", "affiliation", "jsonFiles/affiliation/country_org.json", "jsonFiles/affiliation/count_country.json")
+    get_fullText_entity("country")
+    get_entity("country", "title", "jsonFiles/title_abstract_entities.json", "jsonFiles/title/count_country.json")
+    get_entity("country", "abstract", "jsonFiles/title_abstract_entities.json", "jsonFiles/abstract/count_country.json")
+    get_entity("country", "affiliation", "jsonFiles/affiliation/country_org.json", "jsonFiles/affiliation/count_country.json")
 
-    #get_fullText_entity("organisation")
-    #get_fullText_organisation_disambiguation()
-    #get_entity("organisation", "title", "jsonFiles/title_abstract_entities.json", "jsonFiles/title/count_org.json")
-    #get_entity("organisation", "abstract", "jsonFiles/title_abstract_entities.json", "jsonFiles/abstract/count_org.json")
-    #get_entity("organisation", "affiliation", "jsonFiles/affiliation/country_org.json", "jsonFiles/affiliation/count_org.json")
+    get_fullText_entity("organisation")
+    get_fullText_organisation_disambiguation()
+    get_entity("organisation", "title", "jsonFiles/title_abstract_entities.json", "jsonFiles/title/count_org.json")
+    get_entity("organisation", "abstract", "jsonFiles/title_abstract_entities.json", "jsonFiles/abstract/count_org.json")
+    get_entity("organisation", "affiliation", "jsonFiles/affiliation/country_org.json", "jsonFiles/affiliation/count_org.json")
 
-    #### calculate country baseline
+    #### calculate country baseline ####
     # cal_f1_pre_recall("country", "full text", "jsonFiles/fullText/count_country.json", False)
     # cal_f1_pre_recall("country", "title", "jsonFiles/title/count_country.json", False)
     # cal_f1_pre_recall("country", "abstract", "jsonFiles/abstract/count_country.json", False)
     # cal_f1_pre_recall("country", "affiliation", "jsonFiles/affiliation/count_country.json", False)
 
-    #### calculate organisation baseline
+    #### calculate organisation baseline ####
     # cal_f1_pre_recall("organisation", "full text", "jsonFiles/fullText/count_org_unambiguous.json", False)
     # cal_f1_pre_recall("organisation", "title", "jsonFiles/title/count_org.json", False)
     # cal_f1_pre_recall("organisation", "abstract", "jsonFiles/abstract/count_org.json", False)
@@ -829,11 +605,6 @@ if __name__ == "__main__":
     # cal_f1_pre_recall("country", "abstract", "jsonFiles/abstract/count_country.json", True)
     # cal_f1_pre_recall("country", "affiliation", "jsonFiles/affiliation/count_country.json", True)
     
-    #### calculate combination weights
-    #cal_combination_weights_country()
-    #cal_combination_weights_organisation()
-
-    #cal_country_level(label_country)
 
     ####
     # get_csv(PMID)

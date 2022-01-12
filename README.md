@@ -7,7 +7,6 @@
 - json Files: contains json files used in main project
     - folders withing jsonFiles contain the sections of text in which json files relating to that section can be found --> title, abstract, affiliation, full text
 - author_affiliation.csv and dataset_org.csv: datasets
-- country_weights.csv, organisation_weights.csv and combination_weights.csv: results of methods cal_combination_weights_country(), cal_combination_weights_organisation() and cal_country_level(label) from BioPython.py respectively.
 - requirements.txt: python library requirements.
 
 ## NEW USERS - How to begin
